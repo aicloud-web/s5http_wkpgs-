@@ -10,12 +10,11 @@ export default {
     try {
       const upgradeHeader = request.headers.get('Upgrade');
       if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
-        return new URL(request.url).pathname === '/'
-          ? new Response('恭喜，当前网址可用于CF Workers/Pages的Socks5或Http本地代理服务', { status: 200 })
-          : new Response('当前网址出错，请确认', { status: 426 });
+ 
+        return await env.ASSETS.fetch(request);;
       }
       if (token && request.headers.get('Sec-WebSocket-Protocol') !== token) {
-        return new Response('Unauthorized', { status: 401 });
+        return await env.ASSETS.fetch(request);
       }
       const [client, server] = Object.values(new WebSocketPair());
       server.accept();
