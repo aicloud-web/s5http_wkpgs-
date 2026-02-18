@@ -8,28 +8,58 @@ import { connect } from 'cloudflare:sockets';
 export default {
   async fetch(request, env, ctx) {
     try {
-      const upgradeHeader = request.headers.get('Upgrade');
-      if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
- 
-        return await env.ASSETS.fetch(request);;
+      const url = new URL(request.url); // این خط معمولاً در کدت هست
+
+      // --- 🟢 کد تست را دقیقاً اینجا قرار بده 🟢 ---
+      if (url.pathname === "/check-my-token") {
+        const debugToken = env.TOKEN || env.token || "❌ توکن در داشبورد یافت نشد";
+        return new Response(`مقدار توکن ذخیره شده: ${debugToken}`, {
+          status: 200,
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
+        });
       }
-      if (token && request.headers.get('Sec-WebSocket-Protocol') !== token) {
+      // --- 🔴 پایان بخش تست 🔴 ---
+      
+      // ۱. استخراج توکن از داشبورد کلودفلر (اگر نبود، از مقدار پیش‌فرض استفاده کن)
+      const activeToken = env.TOKEN ; 
+      
+      const upgradeHeader = request.headers.get('Upgrade');
+
+      // ۲. فیلتر ترافیک عادی (نمایش سایت ادیتور AI)
+      if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
         return await env.ASSETS.fetch(request);
       }
+
+      // ۳. بررسی توکن امنیتی برای اتصال پروکسی
+      // اگر کاربر توکن ست کرده باشد ولی در درخواست نباشد -> نمایش سایت نقاب
+      const clientProtocol = request.headers.get('Sec-WebSocket-Protocol');
+      if (activeToken && clientProtocol !== activeToken) {
+        return await env.ASSETS.fetch(request);
+      }
+
+      // ۴. برقراری اتصال WebSocket (بخش اصلی پروکسی)
       const [client, server] = Object.values(new WebSocketPair());
       server.accept();
+      
+      // اجرای هندل کردن سشن (ارسال ترافیک به سمت Proxy IP)
       handleSession(server).catch(() => safeCloseWebSocket(server));
+
       const responseInit = {
-        status: 101,
+        status: 101, // Switching Protocols
         webSocket: client
       };
-      if (token) {
-        responseInit.headers = { 'Sec-WebSocket-Protocol': token };
+
+      // برگرداندن توکن در هدر پاسخ برای تایید هندشیک
+      if (activeToken) {
+        responseInit.headers = { 'Sec-WebSocket-Protocol': activeToken };
       }
+
       return new Response(null, responseInit);
 
     } catch (err) {
-      return new Response(err.toString(), { status: 500 });
+      // در صورت بروز خطای داخلی، سایت را نشان بده تا سیستم از کار نیفتد
+      console.error(err);
+      return await env.ASSETS.fetch(request);
     }
   },
 };
