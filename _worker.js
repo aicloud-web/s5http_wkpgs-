@@ -10,16 +10,7 @@ export default {
     try {
       const url = new URL(request.url); // این خط معمولاً در کدت هست
 
-      // --- 🟢 کد تست را دقیقاً اینجا قرار بده 🟢 ---
-      if (url.pathname === "/check-my-token") {
-        const debugToken = env.TOKEN || env.token || "❌ توکن در داشبورد یافت نشد";
-        return new Response(`مقدار توکن ذخیره شده: ${debugToken}`, {
-          status: 200,
-          headers: { "Content-Type": "text/plain; charset=utf-8" }
-        });
-      }
-      // --- 🔴 پایان بخش تست 🔴 ---
-      
+ 
       // ۱. استخراج توکن از داشبورد کلودفلر (اگر نبود، از مقدار پیش‌فرض استفاده کن)
       const activeToken = env.TOKEN ; 
       
